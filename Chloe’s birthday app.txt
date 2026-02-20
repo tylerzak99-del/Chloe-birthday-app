@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chloe’s Birthday 🎂</title>
+<style>
+body{font-family:sans-serif;text-align:center;background:#111;color:#fff}
+section{margin:30px auto;max-width:600px}
+button{padding:10px 15px;margin:5px;border-radius:8px;border:none}
+input,textarea{padding:8px;width:90%;margin:5px;border-radius:6px}
+.confetti{position:fixed;top:-10px;width:10px;height:10px;animation:fall 2s linear forwards}
+@keyframes fall{to{transform:translateY(100vh) rotate(360deg)}}
+img{margin:5px;border-radius:10px}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<section id="login">
+  <h2>🎂 Welcome</h2>
+  <input id="emailInput" placeholder="Enter your email">
+  <button onclick="login()">Enter</button>
+</section>
+
+<!-- LOCK -->
+<section id="lock" style="display:none">
+  <h1>🔥 Chloe’s Birthday Unlocks In 🔥</h1>
+  <h2 id="cd"></h2>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz" style="display:none">
+  <h2 id="q"></h2>
+  <div id="options"></div>
+  <div id="scoreEl"></div>
+  <div id="controls"></div>
+</section>
+
+<!-- PHOTO BOOTH -->
+<section id="booth" style="display:none">
+  <h2>📸 Photo Booth</h2>
+  <input type="file" accept="image/*" capture="camera" onchange="savePhoto(event)">
+  <div id="gallery"></div>
+</section>
+
+<!-- MEMORY VAULT -->
+<section id="memories" style="display:none">
+  <h2>💖 Memories</h2>
+  <input type="file" multiple accept="image/*" onchange="saveMemories(event)">
+  <textarea id="memoryText" placeholder="Write a memory..."></textarea>
+  <button onclick="saveMemoryText()">Save Memory</button>
+  <div id="memoryGallery"></div>
+</section>
+
+<!-- VIDEO -->
+<section id="video" style="display:none">
+  <h2>🎬 Birthday Video</h2>
+  <input type="file" multiple accept="image/*" onchange="loadSlides(event)">
+  <input type="file" accept="audio/*" onchange="loadMusic(event)">
+  <img id="slide" width="300">
+  <audio id="music" controls></audio>
+</section>
+
+<!-- MESSAGES -->
+<section id="messages" style="display:none">
+  <h2>💌 Messages for Chloe</h2>
+  <textarea id="msg" placeholder="Write something sweet..."></textarea>
+  <button onclick="postMsg()">Post</button>
+  <div id="msgs"></div>
+</section>
+
+<script>
+/* CONFIG */
+const unlockTime=new Date("2026-02-23T08:27:00");
+let userEmail=localStorage.userEmail||null;
+
+/* LOGIN */
+function login(){
+ let e=emailInput.value.trim();
+ if(!e) return alert("Enter email");
+ localStorage.userEmail=e;
+ location.reload();
+}
+function isChloe(){return userEmail==="Chloezak23@icloud.com";}
+function locked(){return isChloe() && new Date()<unlockTime;}
+
+/* LOCK */
+if(!userEmail){
+ login.style.display="block";
+}else if(locked()){
+ lock.style.display="block";
+ setInterval(()=>{
+  let d=unlockTime-new Date();
+  cd.innerText=
+   Math.floor(d/3600000)+"h "+
+   Math.floor(d%3600000/60000)+"m "+
+   Math.floor(d%60000/1000)+"s";
+  if(d<=0) location.reload();
+ },1000);
+}else{
+ startApp();
+}
+
+/* CONFETTI */
+function confetti(){
+ for(let i=0;i<60;i++){
+  let c=document.createElement("div");
+  c.className="confetti";
+  c.style.left=Math.random()*100+"vw";
+  c.style.background=["red","orange","yellow"][Math.floor(Math.random()*3)];
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(),2000);
+ }
+}
+
+/* QUIZ */
+const quizData=[
+ {q:"Chloe’s favorite birthday food?",o:["Pizza","Hibachi","Burgers"],a:1},
+ {q:"Chloe is most competitive at…",o:["Games","School","Sleep"],a:0},
+ {q:"Best hibachi trick?",o:["Fire","Egg Flip","Volcano"],a:2}
+];
+let qi=0,score=0;
+
+function loadQ(){
+ if(qi>=quizData.length){
+  saveScore();
+  q.innerText=`FINAL SCORE: ${score}/${quizData.length}`;
+  options.innerHTML="";
+  scoreEl.innerHTML=leaderboard();
+  if(isHighScore()){confetti();alert("🏆 NEW CHAMPION 🏆");}
+  return;
+ }
+ q.innerText=quizData[qi].q;
+ options.innerHTML="";
+ quizData[qi].o.forEach((o,i)=>{
+  options.innerHTML+=`<button onclick="pick(${i})">${o}</button>`;
+ });
+ scoreEl.innerText=`Score: ${score}`;
+}
+function pick(i){if(i===quizData[qi].a)score++;qi++;loadQ();}
+
+/* LEADERBOARD */
+function saveScore(){
+ let s=JSON.parse(localStorage.scores||"[]");
+ s.push(score);localStorage.scores=JSON.stringify(s);
+}
+function leaderboard(){
+ let s=JSON.parse(localStorage.scores||"[]");
+ return s.length?`👥 Players: ${s.length}<br>🥇 Best: ${Math.max(...s)}`:"";
+}
+function isHighScore(){
+ let s=JSON.parse(localStorage.scores||"[]");
+ return score===Math.max(...s);
+}
+
+/* SHARE */
+let b=document.createElement("button");
+b.innerText="📤 Send Quiz to Friends";
+b.onclick=()=>{
+ navigator.clipboard.writeText(location.href+"?quiz=true");
+ alert("Link copied!");
+};
+controls.appendChild(b);
+
+/* PHOTO BOOTH */
+function savePhoto(e){
+ let r=new FileReader();
+ r.onload=()=>{
+  let g=JSON.parse(localStorage.photos||"[]");
+  g.push(r.result);
+  localStorage.photos=JSON.stringify(g);
+  renderPhotos();
+ };
+ r.readAsDataURL(e.target.files[0]);
+}
+function renderPhotos(){
+ gallery.innerHTML="";
+ JSON.parse(localStorage.photos||"[]").forEach(p=>{
+  gallery.innerHTML+=`<img src="${p}" width="100">`;
+ });
+}
+renderPhotos();
+
+/* MEMORIES */
+function saveMemories(e){
+ let store=JSON.parse(localStorage.memories||"[]");
+ [...e.target.files].forEach(f=>{
+  let r=new FileReader();
+  r.onload=()=>{
+   store.push({img:r.result,text:""});
+   localStorage.memories=JSON.stringify(store);
+   renderMemories();
+  };
+  r.readAsDataURL(f);
+ });
+}
+function saveMemoryText(){
+ let store=JSON.parse(localStorage.memories||"[]");
+ if(store.length){
+  store[store.length-1].text=memoryText.value;
+  localStorage.memories=JSON.stringify(store);
+  memoryText.value="";
+  renderMemories();
+ }
+}
+function renderMemories(){
+ memoryGallery.innerHTML="";
+ JSON.parse(localStorage.memories||"[]").forEach(m=>{
+  memoryGallery.innerHTML+=`<div><img src="${m.img}" width="100"><p>${m.text}</p></div>`;
+ });
+}
+renderMemories();
+
+/* VIDEO */
+let slides=[],idx=0;
+function loadSlides(e){
+ slides=[];
+ [...e.target.files].forEach(f=>{
+  let r=new FileReader();
+  r.onload=()=>slides.push(r.result);
+  r.readAsDataURL(f);
+ });
+ setInterval(()=>{if(slides.length)slide.src=slides[idx++%slides.length];},3000);
+}
+function loadMusic(e){
+ music.src=URL.createObjectURL(e.target.files[0]);
+ music.play();
+}
+
+/* MESSAGES */
+function postMsg(){
+ let m=JSON.parse(localStorage.messages||"[]");
+ m.push({email:userEmail,text:msg.value});
+ localStorage.messages=JSON.stringify(m);
+ msg.value="";
+ renderMsgs();
+}
+function renderMsgs(){
+ msgs.innerHTML="";
+ JSON.parse(localStorage.messages||"[]").forEach(m=>{
+  msgs.innerHTML+=`<p><strong>${m.email}</strong>: ${m.text}</p>`;
+ });
+}
+renderMsgs();
+
+/* START */
+function startApp(){
+ quiz.style.display=booth.style.display=
+ memories.style.display=video.style.display=
+ messages.style.display="block";
+ loadQ();
+}
+</script>
+</body>
+</html>
